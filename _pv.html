@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Bookmarklet-free album preview driver</title>
+<style>html,body{margin:0;height:100%;background:#05040F;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style>
+</head>
+<body>
+<iframe id="fr" src="index.html?surprise=1"></iframe>
+<script>
+  // 等页面启动后，直接跳到相册并停在指定飞入进度
+  const MODE = new URLSearchParams(location.search).get('m') || 'settled';
+  const fr = document.getElementById('fr');
+  fr.onload = () => setTimeout(() => {
+    const w = fr.contentWindow, d = w.document;
+    const hide = ['bdBlack','stageCake','stageRun','stageRunEnd','stageLetter','stageWishes','stageInput','stagePhotos','stageGift'];
+    hide.forEach((id) => { const e = d.getElementById(id); if (e) { e.classList.remove('show'); e.style.display = 'none'; } });
+    const alb = d.getElementById('stageAlbum');
+    alb.style.display = ''; alb.classList.add('show');
+    // 通过 URL 触发相册（APP 暴露的入口）
+    if (MODE === 'letter') { if (w.APP && w.APP.previewLetter) w.APP.previewLetter(); return; }
+    if (w.APP && typeof w.APP.previewAlbum === 'function') w.APP.previewAlbum(MODE);
+  }, 900);
+</script>
+</body>
+</html>

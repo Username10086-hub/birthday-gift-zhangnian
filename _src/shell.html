@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#6366F1">
+<meta name="description" content="纪念 · 把日子过成想要的样子">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="纪念">
+<title>纪念</title>
+
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+
+<style>
+/*{{CSS}}*/
+</style>
+</head>
+
+<body>
+
+<!-- ============================ 页面A：生日惊喜 ============================ -->
+<div id="pageA" class="page">
+  <canvas id="fwCanvas"></canvas>
+
+  <!-- 入场音频（音乐驱动整个流程） -->
+  <audio id="bdayAudio" src="images/bday-music.mp3" preload="auto" loop="false"></audio>
+
+  <!-- ① 黑屏 + 音乐提示（第 5 秒淡出） -->
+  <div class="bd-black" id="bdBlack"></div>
+  <div class="bd-music-hint" id="bdMusicHint">
+    <i class="fa-solid fa-music"></i>
+    <span>这里有一段音乐，请打开声音呀</span>
+  </div>
+
+  <!-- ② 蛋糕与蜡烛 -->
+  <div class="stage" id="stageCake">
+    <div class="cake-stage" id="cakeStage">
+      <div class="cake" id="cake">
+        <div class="candle" id="candle">
+          <span class="wick" id="wick"></span>
+          <span class="flame"></span>
+          <span class="flame-glow"></span>
+        </div>
+        <div class="tier tier-top"></div>
+        <div class="tier tier-bottom"></div>
+        <div class="plate"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 蜡烛点亮后才出现的提示与进度条（进度条同时充当「吹气进度」） -->
+  <div class="blow-hint" id="blowHint">对着麦克风吹一口气，把蜡烛吹灭吧</div>
+  <div class="mic-bar" id="micBar"><i id="micFill"></i></div>
+  <button class="blow-btn hidden" id="blowBtn">按住不放，吹灭蜡烛</button>
+
+  <!-- ③ 星空宇宙回忆相册（吹灭蜡烛后登场）：星球驮着照片一张张迎面飞来，全自动轮播 -->
+  <div class="stage" id="stageAlbum">
+    <canvas id="albumSky"></canvas>
+    <div class="album-dust" id="albumDust" aria-hidden="true"></div>
+    <div class="album-intro" id="albumIntro"></div>
+    <div class="album-track" id="albumTrack">
+      <div class="album-card" id="albumCardB">
+        <div class="ac-img"><img alt=""></div>
+        <div class="ac-cap"><div class="ac-title"></div><div class="ac-note"></div></div>
+        <div class="ac-glow" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="album-auto" id="albumAuto"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> 自动轮播中，不用手动翻</div>
+    <button class="album-next" id="albumNext">继续往下走 <i class="fa-solid fa-arrow-right"></i></button>
+  </div>
+
+  <!-- ④ 许愿输入框（照片收拢后出现，15 秒内填完） -->
+  <div class="stage" id="stageInput">
+    <div class="bday-input-card">
+      <div class="ic-q">蜡烛已经为你亮着了<br><span class="ic-sub">许一个愿吧，只给你自己</span></div>
+      <input type="text" id="bdayInputBox" maxlength="40" placeholder="为自己许下一个愿望吧" autocomplete="off">
+      <button class="btn primary" id="bdayInputGo">把它许下来 <i class="fa-solid fa-arrow-right"></i></button>
+      <div class="ic-count" id="bdayInputCount">15s</div>
+      <div class="ic-ring"><i id="bdayInputRing"></i></div>
+    </div>
+  </div>
+
+  <!-- ⑤ 满屏祝福 -->
+  <div class="stage" id="stageWishes"><div class="wish-field" id="wishField"></div></div>
+
+  <!-- ⑥ 跑酷小游戏 -->
+  <div class="stage" id="stageRun">
+    <canvas id="runCanvas"></canvas>
+    <div class="run-quote" id="runQuote"></div>
+    <div class="run-tip" id="runTip">点一下屏幕，让小人跳起来</div>
+  </div>
+
+  <!-- ⑦ 跑酷收尾：光点汇聚成那句话 → 光点散开、重新组成信封（信封本身就是光点，不再有实体信封） -->
+  <div class="stage" id="stageRunEnd">
+    <canvas id="convergeCanvas"></canvas>
+    <div class="converge-line" id="convergeLine"></div>
+    <div class="env-hot" id="envHot" hidden></div>
+    <div class="letter-arrow env-arrow" id="envArrow"><span>点一下，打开它</span><i class="fa-solid fa-hand-pointer"></i></div>
+  </div>
+
+  <!-- ⑧ 信纸（读信视图）：光点信封落定后点它打开，直接看到信；不再有实体信封 -->
+  <div class="stage" id="stageLetter">
+    <div class="envelope-wrap">
+      <div class="letter" id="letterPaper">
+        <div class="letter-scroll" id="letterScroll">
+          <h3 id="letterTitle"></h3>
+          <div id="letterBody"></div>
+          <div class="sign" id="letterSign"></div>
+        </div>
+        <div style="display:flex;justify-content:center;padding-top:14px">
+          <button class="btn ghost" id="foldLetter" style="color:#6366F1;box-shadow:inset 0 0 0 1px rgba(99,102,241,.4)">
+            <i class="fa-solid fa-envelope-open-text"></i> 收起信件
+          </button>
+        </div>
+      </div>
+      <div class="letter-arrow" id="letterArrow">
+        <span>点一下，打开它</span>
+        <i class="fa-solid fa-hand-pointer"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑨ 星空宇宙回忆相册已前置到第 ③ 段（照片轮播的位置），这里不再重复 -->
+
+  <!-- ⑩ 礼物 -->
+  <div class="stage" id="stageGift">
+    <div class="gift-wrap">
+      <div class="gift-hint" id="giftHint">点击礼物直达惊喜</div>
+      <button class="gift-btn" id="giftBtn"><i class="fa-solid fa-gift"></i></button>
+    </div>
+  </div>
+
+  <!-- 放大的烟花金句 -->
+  <div class="bd-boom" id="bdBoom"></div>
+</div>
+
+<!-- ============================ 页面B：工作台 ============================ -->
+<div id="pageB" class="page hidden">
+
+  <!-- 左侧导航（PC） -->
+  <aside class="side-nav">
+    <div class="brand">
+      <span class="brand-mark"><i class="fa-solid fa-leaf"></i></span>
+      <span class="brand-text"><b>纪念</b><span>数据存于本机</span></span>
+    </div>
+    <button class="nav-item active" data-nav="home"><i class="fa-solid fa-house"></i>首页</button>
+    <button class="nav-item" data-nav="money"><i class="fa-solid fa-wallet"></i>记账</button>
+    <button class="nav-item" data-nav="life"><i class="fa-solid fa-utensils"></i>运动三餐</button>
+    <button class="nav-item" data-nav="todo"><i class="fa-solid fa-list-check"></i>日程待办</button>
+    <button class="nav-item" data-nav="period"><i class="fa-solid fa-droplet"></i>经期</button>
+    <button class="nav-item" data-nav="lang"><i class="fa-solid fa-language"></i>外语学习</button>
+    <button class="nav-item" data-nav="study"><i class="fa-solid fa-calculator"></i>专业学习</button>
+    <button class="nav-item" data-nav="news"><i class="fa-solid fa-newspaper"></i>时政</button>
+    <button class="nav-item" data-nav="settings"><i class="fa-solid fa-gear"></i>设置</button>
+    <div class="nav-foot">全部数据保存在本机浏览器<br>离线可用</div>
+  </aside>
+
+  <!-- 主区 -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="topbarTitle">首页</h1>
+        <div class="sub" id="topbarSub"></div>
+      </div>
+      <button class="btn-bday" id="birthdayBtn" hidden><i class="fa-solid fa-cake-candles"></i>生日快乐✨</button>
+    </header>
+
+    <main class="scroll" id="viewport">
+
+      <!-- ---------- 首页 ---------- -->
+      <section class="view" id="view-home">
+        <div class="hero">
+          <div class="greet" id="greet">你好</div>
+          <div class="date" id="heroDate"></div>
+          <div class="quote" id="quote"></div>
+          <div style="margin-top:14px">
+            <button class="btn ghost" id="btnQuote"
+              style="background:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.24)">
+              <i class="fa-solid fa-arrows-rotate"></i> 换一句
+            </button>
+          </div>
+        </div>
+
+        <!-- 考试临近提醒（考前 3 天自动浮出：3 / 2 / 1 / 0 天都会提示） -->
+        <div class="card exam-alert" id="examAlert" hidden>
+          <div class="ea-ico"><i class="fa-solid fa-hourglass-half"></i></div>
+          <div class="ea-body">
+            <div class="ea-title" id="examAlertTitle"></div>
+            <div class="ea-sub" id="examAlertSub"></div>
+          </div>
+          <div class="ea-days" id="examAlertDays"></div>
+        </div>
+
+        <!-- 当地天气 + 穿衣提醒（放在首页靠上位置） -->
+        <div class="card" id="weatherCard" style="margin-bottom:14px">
+          <h2>
+            <i class="fa-solid fa-cloud-sun"></i> 今日天气
+            <span class="right" id="weatherLoc">定位中…</span>
+            <button class="ibtn" id="weatherRefresh" title="刷新天气" style="margin-left:8px"><i class="fa-solid fa-arrows-rotate"></i></button>
+          </h2>
+          <div id="weatherBody">
+            <div class="empty" style="padding:16px"><i class="fa-solid fa-spinner fa-spin"></i> 正在获取当地天气…</div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat" data-go="todo">
+            <div class="k"><i class="fa-solid fa-list-check"></i>今日待办</div>
+            <div class="v" id="sTodo">0<small>/ 0</small></div>
+            <div class="bar"><i id="sTodoBar" style="width:0%"></i></div>
+            <div class="n" id="sTodoNote"></div>
+          </div>
+          <div class="stat" data-go="money">
+            <div class="k"><i class="fa-solid fa-wallet"></i>今日支出</div>
+            <div class="v" id="sSpend">0<small>元</small></div>
+            <div class="n" id="sSpendNote"></div>
+          </div>
+          <div class="stat" data-go="study">
+            <div class="k"><i class="fa-solid fa-clock"></i>今日学习</div>
+            <div class="v" id="sStudy">0<small>分钟</small></div>
+            <div class="n" id="sStudyNote"></div>
+          </div>
+          <div class="stat" data-go="lang">
+            <div class="k"><i class="fa-solid fa-language"></i>今日背单词</div>
+            <div class="v" id="sLang">0<small>个</small></div>
+            <div class="n" id="sLangNote"></div>
+          </div>
+          <div class="stat" data-go="life">
+            <div class="k"><i class="fa-solid fa-person-running"></i>今日运动</div>
+            <div class="v" id="sSport">0<small>分钟</small></div>
+            <div class="n" id="sSportNote"></div>
+          </div>
+          <div class="stat" data-go="period" id="sPeriodWrap">
+            <div class="k"><i class="fa-solid fa-droplet"></i>距下次经期</div>
+            <div class="v" id="sPeriod">—</div>
+            <div class="n" id="sPeriodNote"></div>
+          </div>
+        </div>
+
+        <div class="quick-grid">
+          <button class="quick" data-go="money" data-focus="expAmount">
+            <span class="qm qm-1"><i class="fa-solid fa-pen-to-square"></i></span>快速记账
+          </button>
+          <button class="quick" data-go="lang" data-focus="wWord">
+            <span class="qm qm-2"><i class="fa-solid fa-spell-check"></i></span>快速背单词
+          </button>
+          <button class="quick" data-go="fab">
+            <span class="qm qm-3"><i class="fa-solid fa-plus"></i></span>快速加待办
+          </button>
+          <button class="quick" data-go="life" data-focus="mealContent">
+            <span class="qm qm-4"><i class="fa-solid fa-bowl-food"></i></span>记录三餐
+          </button>
+        </div>
+      </section>
+
+      <!-- ---------- 记账 ---------- -->
+      <section class="view hidden" id="view-money">
+        <div class="cols cols-2">
+          <div class="card">
+            <h2><i class="fa-solid fa-chart-pie"></i> 本月支出<span class="right" id="monthLabel"></span></h2>
+            <div class="donut-wrap">
+              <div class="donut" id="donut"></div>
+              <div class="legend" id="legend"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2><i class="fa-solid fa-pen-to-square"></i> 记一笔</h2>
+            <div class="row">
+              <div class="field" style="max-width:170px"><label>日期</label><input type="date" id="expDate"></div>
+              <div class="field" style="max-width:150px"><label>金额</label><input type="number" id="expAmount" min="0" step="0.01" placeholder="0.00"></div>
+              <div class="field" style="max-width:140px"><label>分类</label><select id="expCat"></select></div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <div class="field"><label>备注</label><input type="text" id="expNote" placeholder="例：食堂午饭"></div>
+              <button class="btn" id="expAdd"><i class="fa-solid fa-plus"></i> 添加</button>
+            </div>
+            <div style="margin-top:16px;font-size:12.5px;color:var(--muted)">本月合计 <b id="monthTotal" style="color:var(--c-blue-deep);font-size:15px">¥0.00</b></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-chart-line"></i> 每日消费趋势<span class="right" id="moneyLineLabel">本月 1 号至今</span></h2>
+          <div id="moneyLine"></div>
+          <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px">每日支出合计（元）</div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-list"></i> 本月明细</h2>
+          <div class="list" id="expList"></div>
+          <div class="pager" id="expPager"></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-chart-column"></i> 消费构成<span class="right">柱内按分类占比</span></h2>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+            <button class="tag" data-mrange="3" style="cursor:pointer">近三月</button>
+            <button class="tag" data-mrange="6" style="cursor:pointer">近六月</button>
+            <button class="tag" data-mrange="12" style="cursor:pointer">近十二月</button>
+            <span id="monthBarsLabel" style="margin-left:auto;font-size:11.5px;color:var(--muted)"></span>
+          </div>
+          <div id="monthBars"></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px" id="monthBarsLegend"></div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h2 style="margin-bottom:0">
+            <i class="fa-solid fa-clock-rotate-left"></i> 年度消费历史
+            <button class="btn ghost sm" id="yearFold" style="margin-left:auto"></button>
+          </h2>
+          <div id="yearWrap" style="margin-top:14px">
+            <div class="row">
+              <div class="field" style="max-width:200px"><label>查看年份</label><select id="yearPick"></select></div>
+            </div>
+            <div id="yearChart" style="margin-top:14px"></div>
+            <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px">每月支出合计（元），柱内按分类占比</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px" id="yearLegend"></div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--line)">
+              <div class="row" style="align-items:flex-end;gap:12px;flex-wrap:wrap">
+                <div class="field" style="max-width:150px"><label>从（年）</label><select id="yearFrom"></select></div>
+                <div class="field" style="max-width:150px"><label>到（年）</label><select id="yearTo"></select></div>
+                <span id="yearLineLabel" style="font-size:11.5px;color:var(--muted);margin-left:auto"></span>
+              </div>
+              <div style="margin-top:14px" id="yearLine"></div>
+              <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px">每年消费折线（自 2026 年起，每年一个点 · 元）</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 运动三餐 ---------- -->
+      <section class="view hidden" id="view-life">
+        <div class="card">
+          <h2><i class="fa-solid fa-bowl-food"></i> 今日三餐</h2>
+          <div class="list" id="mealSlots"></div>
+          <div class="row" style="margin-top:14px">
+            <div class="field" style="max-width:170px"><label>日期</label><input type="date" id="mealDate"></div>
+            <div class="field" style="max-width:130px"><label>餐次</label><select id="mealType"></select></div>
+            <div class="field"><label>吃了什么</label><input type="text" id="mealContent" placeholder="例：燕麦牛奶 + 水煮蛋"></div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div class="field"><label>备注</label><input type="text" id="mealNote" placeholder="份量 / 感受"></div>
+            <button class="btn" id="mealAdd"><i class="fa-solid fa-plus"></i> 记录</button>
+          </div>
+        </div>
+
+        <div class="cols cols-2" style="margin-top:14px">
+          <div class="card">
+            <h2><i class="fa-solid fa-person-running"></i> 运动打卡<span class="right">今日 <b id="todaySport">0<small>分钟</small></b></span></h2>
+            <div class="row">
+              <div class="field" style="max-width:160px"><label>日期</label><input type="date" id="workDate"></div>
+              <div class="field" style="max-width:130px"><label>项目</label><select id="workType"></select></div>
+              <div class="field" style="max-width:120px"><label>时长（分钟）</label><input type="number" id="workMinutes" min="1" placeholder="30"></div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <div class="field"><label>备注</label><input type="text" id="workNote" placeholder="强度 / 感受"></div>
+              <button class="btn pink" id="workAdd"><i class="fa-solid fa-check"></i> 打卡</button>
+            </div>
+            <div class="cheer-text cheer" id="workCheer" style="margin-top:9px"></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px" id="todaySportNote"></div>
+            <div style="margin-top:16px" id="sportBars"></div>
+            <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:6px">近 7 天运动时长（分钟）</div>
+          </div>
+          <div class="card">
+            <h2><i class="fa-solid fa-clock-rotate-left"></i> 运动记录</h2>
+            <div class="list" id="sportList"></div>
+            <div class="pager" id="workPager"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-chart-line"></i> 运动时间趋势</h2>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+            <button class="tag" data-sportrange="3" style="cursor:pointer">近 3 天</button>
+            <button class="tag" data-sportrange="7" style="cursor:pointer">近 1 周</button>
+            <button class="tag" data-sportrange="30" style="cursor:pointer">近 1 月</button>
+            <span id="sportRangeLabel" style="margin-left:auto;font-size:11.5px;color:var(--muted)"></span>
+          </div>
+          <div class="row">
+            <div class="field" style="max-width:170px"><label>从</label><input type="date" id="sportFrom"></div>
+            <div class="field" style="max-width:170px"><label>到</label><input type="date" id="sportTo"></div>
+          </div>
+          <div id="sportChart" style="margin-top:14px"></div>
+          <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px">每日运动时长（分钟）</div>
+          <div style="margin-top:12px;padding:11px 14px;border-radius:var(--r-sm);background:var(--c-blue-tint);font-size:13px;color:var(--c-blue-deep);text-align:center;line-height:1.7" id="sportEncourage"></div>
+        </div>
+      </section>
+
+      <!-- ---------- 日程待办 ---------- -->
+      <section class="view hidden" id="view-todo">
+        <div class="card">
+          <h2><i class="fa-solid fa-list-check"></i> 待办清单</h2>
+          <div class="tabs" id="todoTabs">
+            <button data-tab="all" class="on">全部<span class="n"></span></button>
+            <button data-tab="daily">日常任务<span class="n"></span></button>
+            <button data-tab="today">今日任务<span class="n"></span></button>
+            <button data-tab="long">长期任务<span class="n"></span></button>
+          </div>
+
+          <div class="row">
+            <div class="field"><label>任务内容</label><input type="text" id="todoInput" placeholder="要做什么"></div>
+            <div class="field" style="max-width:150px"><label>任务类型</label><select id="todoType">
+              <option value="daily">日常任务</option>
+              <option value="today" selected>当日任务</option>
+              <option value="long">长期任务</option>
+            </select></div>
+            <div class="field" style="max-width:120px"><label>优先级</label><select id="todoPrio">
+              <option value="high">高</option>
+              <option value="mid" selected>中</option>
+              <option value="low">低</option>
+            </select></div>
+            <button class="btn" id="todoAdd"><i class="fa-solid fa-plus"></i> 添加</button>
+          </div>
+
+          <div class="todo" id="todoList" style="margin-top:16px"></div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px">
+            <button class="btn ghost sm" id="todoClearDone"><i class="fa-solid fa-broom"></i> 清理已完成</button>
+            <label class="switch"><input type="checkbox" id="resetToggle"><span></span></label>
+            <span style="font-size:12px;color:var(--muted)">当日任务每日重置</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 经期 ---------- -->
+      <section class="view hidden" id="view-period">
+        <div id="periodCare"></div>
+        <div id="periodStat"></div>
+        <div class="card">
+          <h2><i class="fa-solid fa-calendar-plus"></i> 记录经期</h2>
+          <div class="row">
+            <div class="field" style="max-width:180px"><label>开始日期</label><input type="date" id="periodStart"></div>
+            <div class="field" style="max-width:180px"><label>结束日期</label><input type="date" id="periodEnd"></div>
+            <button class="btn pink" id="periodAdd"><i class="fa-solid fa-plus"></i> 保存</button>
+          </div>
+          <div class="list" id="periodList" style="margin-top:16px"></div>
+          <div class="pager" id="periodPager"></div>
+        </div>
+      </section>
+
+      <!-- ---------- 外语学习 ---------- -->
+      <section class="view hidden" id="view-lang">
+        <div class="cols cols-2">
+          <div class="card">
+            <h2><i class="fa-solid fa-quote-left"></i> 每日金句<span class="right" id="enTip"></span></h2>
+            <div style="font-size:17.5px;line-height:1.65;font-family:Georgia,serif;color:var(--ink)" id="qEn"></div>
+            <div style="font-size:13.5px;color:var(--ink-2);margin-top:10px;line-height:1.8" id="qZh"></div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px" id="qKeys"></div>
+            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center">
+              <button class="btn sm" id="btnSpeakEn"><i class="fa-solid fa-volume-high"></i> 听发音</button>
+              <button class="btn sm" id="btnCopyEn"><i class="fa-regular fa-copy"></i> 复制</button>
+              <button class="btn ghost sm" id="btnNextEn"><i class="fa-solid fa-shuffle"></i> 换一句</button>
+              <button class="btn ghost sm" id="btnFavQuote"><i class="fa-regular fa-star"></i> 收藏</button>
+              <span class="cheer" id="qCheer"></span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2><i class="fa-solid fa-spell-check"></i> 单词卡<span class="right">今日 <b id="wKnown">0</b> 会 / <b id="wUnknown">0</b> 不会 · 共 <b id="wTotal">0</b> 个</span></h2>
+            <div class="item" style="display:block;padding:18px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="font-size:24px;font-weight:600;letter-spacing:.01em" id="wWord"></div>
+                <button class="speak-btn" id="wSpeak" title="听发音"><i class="fa-solid fa-volume-high"></i></button>
+              </div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:5px" id="wPhon"></div>
+              <div id="wMeaning" class="hidden" style="margin-top:12px">
+                <div style="font-size:14px;color:var(--c-blue-deep);font-weight:500" id="wMean"></div>
+                <div style="font-size:13px;color:var(--ink-2);margin-top:8px;font-family:Georgia,serif" id="wSent"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
+              <button class="btn sm" id="btnReveal"><i class="fa-regular fa-eye"></i> 看释义</button>
+              <span class="cheer" id="wCheer"></span>
+              <span id="wActions" class="hidden" style="display:flex;gap:10px">
+                <button class="btn ghost sm" id="wAgain"><i class="fa-solid fa-rotate-left"></i> 不认识</button>
+                <button class="btn sm" id="wNext"><i class="fa-solid fa-check"></i> 认识</button>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-feather-pointed"></i> 作文常用句式<span class="right">每天自动刷新 · 点击星星收藏/取消</span></h2>
+          <div class="list" id="patList"></div>
+          <div class="pager" id="patPager"></div>
+          <span class="cheer" id="patCheer"></span>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-regular fa-bookmark"></i> 好词好句收藏夹
+            <button class="btn ghost sm" id="favFold" style="margin-left:auto"></button>
+          </h2>
+          <div class="field">
+            <label>内容</label>
+            <textarea id="favText" placeholder="摘抄句子、作文模板或高级词汇"></textarea>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div class="field" style="max-width:180px"><label>分类</label><select id="favCat"></select></div>
+            <button class="btn" id="favAdd"><i class="fa-solid fa-plus"></i> 收藏</button>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:16px;align-items:center" id="favFilterWrap">
+            <div style="display:flex;gap:7px;flex-wrap:wrap" id="favFilter"></div>
+            <span class="cheer" id="favCheer"></span>
+          </div>
+          <div class="list" id="favList" style="margin-top:12px"></div>
+          <div class="pager" id="favPager"></div>
+        </div>
+      </section>
+
+      <!-- ---------- 专业学习 ---------- -->
+      <section class="view hidden" id="view-study">
+        <div class="card">
+          <h2><i class="fa-solid fa-lightbulb"></i> 每日会计知识点<span class="right" id="tipDate"></span></h2>
+          <div style="font-size:16px;font-weight:600;color:var(--c-blue-deep);margin-bottom:10px" id="tipTitle"></div>
+          <div style="font-size:13.5px;line-height:1.85;color:var(--ink-2);margin-bottom:12px" id="tipPlain"></div>
+          <div class="item" style="display:block;line-height:1.85;font-size:13px" id="tipExample"></div>
+        </div>
+
+        <div class="cols cols-2" style="margin-top:14px">
+          <div class="card">
+            <h2><i class="fa-solid fa-hourglass-half"></i> 考试倒计时</h2>
+            <div class="row">
+              <div class="field"><label>考试名称</label><input type="text" id="examName" placeholder="初级会计职称 / CPA / 税务师"></div>
+              <div class="field" style="max-width:170px"><label>考试日期</label><input type="date" id="examDate"></div>
+              <button class="btn" id="examAdd"><i class="fa-solid fa-plus"></i> 添加</button>
+            </div>
+            <div class="list" id="examList" style="margin-top:14px"></div>
+            <div class="pager" id="examPager"></div>
+          </div>
+
+          <div class="card">
+            <h2><i class="fa-solid fa-clock"></i> 学习打卡<span class="right">今日 <b id="studyToday">0</b> 分钟</span></h2>
+            <div class="row">
+              <div class="field" style="max-width:150px"><label>时长（分钟）</label><input type="number" id="studyMinutes" min="1" placeholder="60"></div>
+              <div class="field"><label>章节 / 内容</label><input type="text" id="studyChapter" placeholder="例：第三章 存货"></div>
+              <button class="btn" id="studyAdd"><i class="fa-solid fa-check"></i> 打卡</button>
+            </div>
+            <div style="margin-top:18px" id="studyBars"></div>
+            <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:6px">近 7 天学习时长（分钟）</div>
+            <div class="list" id="studyList" style="margin-top:14px"></div>
+            <div class="pager" id="studyPager"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-chart-line"></i> 学习时间趋势</h2>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+            <button class="tag" data-studyrange="3" style="cursor:pointer">近 3 天</button>
+            <button class="tag" data-studyrange="7" style="cursor:pointer">近 1 周</button>
+            <button class="tag" data-studyrange="30" style="cursor:pointer">近 1 月</button>
+            <span id="studyRangeLabel" style="margin-left:auto;font-size:11.5px;color:var(--muted)"></span>
+          </div>
+          <div class="row">
+            <div class="field" style="max-width:170px"><label>从</label><input type="date" id="studyFrom"></div>
+            <div class="field" style="max-width:170px"><label>到</label><input type="date" id="studyTo"></div>
+          </div>
+          <div id="studyChart" style="margin-top:14px"></div>
+          <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:4px">每日学习时长（分钟）</div>
+          <div style="margin-top:12px;padding:11px 14px;border-radius:var(--r-sm);background:var(--c-blue-tint);font-size:13px;color:var(--c-blue-deep);text-align:center;line-height:1.7" id="studyEncourage"></div>
+        </div>
+      </section>
+
+      <!-- ---------- 时政 ---------- -->
+      <section class="view hidden" id="view-news">
+        <div class="card">
+          <h2><i class="fa-solid fa-quote-left"></i> 每日金句</h2>
+          <div class="item" style="display:block;padding:18px">
+            <div style="font-size:15px;line-height:1.9;color:var(--ink);font-family:Georgia,serif" id="newsQuoteText"></div>
+            <div style="margin-top:12px">
+              <span style="font-size:12px;color:var(--muted)" id="newsQuoteFrom"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fa-solid fa-pen-nib"></i> 今日时政</h2>
+          <div class="row">
+            <div class="field" style="max-width:180px"><label>日期</label><input type="date" id="newsDate"></div>
+            <div class="field" style="max-width:200px"><label>来源</label><input type="text" id="newsSource" placeholder="例如 人民日报"></div>
+            <div class="field"><label>标题</label><input type="text" id="newsTitle" placeholder="今日要点"></div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label>摘要</label>
+            <textarea id="newsBody" style="min-height:120px" placeholder="粘贴今日时政摘要"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn" id="newsSave"><i class="fa-solid fa-check"></i> 保存</button>
+            <button class="btn ghost" id="newsClear"><i class="fa-solid fa-eraser"></i> 清空</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-book-open"></i> 今日时政要点<span class="right" id="newsSeedLabel">每天轮换 · 每组 5 条</span></h2>
+          <div class="list" id="newsSeed"></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2><i class="fa-solid fa-clock-rotate-left"></i> 历史记录</h2>
+          <div class="list" id="newsList"></div>
+          <div class="pager" id="newsPager"></div>
+        </div>
+      </section>
+
+      <!-- ---------- 设置 ---------- -->
+      <section class="view hidden" id="view-settings">
+        <div class="card">
+          <h2><i class="fa-solid fa-palette"></i> 外观</h2>
+          <div class="set-row">
+            <div class="grow">
+              <div class="nm">主题模式</div>
+              <div class="ds">跟随时间：7:00–19:00 浅色，其余时段深色</div>
+            </div>
+            <div class="seg">
+              <button data-themeset="auto">跟随时间</button>
+              <button data-themeset="light">浅色</button>
+              <button data-themeset="dark">深色</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fa-solid fa-cake-candles"></i> 生日惊喜</h2>
+          <div class="set-row">
+            <div class="grow">
+              <div class="nm">生日日期</div>
+              <div class="ds" id="isBdayToday"></div>
+            </div>
+            <input type="number" id="bdayMonth" min="1" max="12" style="width:74px" placeholder="月">
+            <input type="number" id="bdayDay" min="1" max="31" style="width:74px" placeholder="日">
+            <button class="btn sm" id="bdaySave">保存</button>
+          </div>
+          <div class="set-row">
+            <div class="grow">
+              <div class="nm">重新体验惊喜</div>
+              <div class="ds">随时完整重看一遍生日惊喜流程</div>
+            </div>
+            <button class="btn sm" data-action="replay-birthday"><i class="fa-solid fa-play"></i> 播放</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><i class="fa-solid fa-database"></i> 数据</h2>
+          <div class="set-row">
+            <div class="grow"><div class="nm">导出备份</div><div class="ds">当前占用 <span id="dataSize">—</span></div></div>
+            <button class="btn sm" id="exportBtn"><i class="fa-solid fa-download"></i> 导出</button>
+          </div>
+          <div class="set-row">
+            <div class="grow"><div class="nm">导入备份</div><div class="ds">从之前导出的 JSON 文件恢复</div></div>
+            <button class="btn ghost sm" id="importBtn"><i class="fa-solid fa-upload"></i> 导入</button>
+            <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+          </div>
+          <div class="set-row">
+            <div class="grow"><div class="nm">清空数据</div><div class="ds">删除全部本地记录，不可恢复</div></div>
+            <button class="btn ghost sm" id="clearBtn" style="color:var(--c-pink-deep);box-shadow:inset 0 0 0 1px var(--c-pink)">清空</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 底部导航（移动端） -->
+  <nav class="bottom-nav">
+    <button class="bn active" data-nav="home"><i class="fa-solid fa-house"></i>首页</button>
+    <button class="bn" data-nav="money"><i class="fa-solid fa-wallet"></i>记账</button>
+    <button class="bn" data-nav="life"><i class="fa-solid fa-utensils"></i>运动三餐</button>
+    <button class="bn" data-nav="todo"><i class="fa-solid fa-list-check"></i>日程待办</button>
+    <button class="bn" data-nav="period"><i class="fa-solid fa-droplet"></i>经期</button>
+    <button class="bn" data-nav="lang"><i class="fa-solid fa-language"></i>外语学习</button>
+    <button class="bn" data-nav="study"><i class="fa-solid fa-calculator"></i>专业学习</button>
+    <button class="bn" data-nav="news"><i class="fa-solid fa-newspaper"></i>时政</button>
+    <button class="bn" data-nav="settings"><i class="fa-solid fa-gear"></i>设置</button>
+  </nav>
+
+  <!-- 悬浮待办小窗 -->
+  <div class="fab-panel hidden-panel" id="fabPanel">
+    <div class="fab-head">
+      <i class="fa-solid fa-list-check" style="color:var(--c-blue)"></i>
+      <span>待办清单</span>
+      <span class="sp"></span>
+      <button id="fabClose"><i class="fa-solid fa-minus"></i></button>
+    </div>
+    <div class="fab-list" id="fabList"></div>
+    <div class="fab-add">
+      <div class="ft" id="fabType">
+        <button data-v="daily">日常</button>
+        <button data-v="today" class="on">今日</button>
+        <button data-v="long">长期</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="fabInput" placeholder="快速添加任务" style="flex:1">
+        <button class="btn sm" id="fabAdd"><i class="fa-solid fa-plus"></i></button>
+      </div>
+    </div>
+  </div>
+  <button class="fab" id="fabBtn">
+    <i class="fa-solid fa-list-check"></i>
+    <span class="dot-badge" id="fabCount">0</span>
+  </button>
+
+  <!-- 任务详情弹窗 -->
+  <div class="mask" id="detailModal">
+    <div class="dialog">
+      <h3>任务详情</h3>
+      <div class="dlg-sub">创建于 <span id="dCreated"></span></div>
+
+      <div class="field" style="margin-bottom:12px">
+        <label>任务内容</label>
+        <input type="text" id="dText">
+      </div>
+
+      <div class="dlg-grid" style="margin-bottom:12px">
+        <div class="field">
+          <label>任务类型</label>
+          <div class="seg" id="dType" style="width:100%">
+            <button data-v="daily" style="flex:1">日常</button>
+            <button data-v="today" style="flex:1">当日</button>
+            <button data-v="long" style="flex:1">长期</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>优先级</label>
+          <div class="seg" id="dPrio" style="width:100%">
+            <button data-v="high" style="flex:1">高</button>
+            <button data-v="mid" style="flex:1">中</button>
+            <button data-v="low" style="flex:1">低</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field hidden" id="dProgWrap" style="margin-bottom:12px">
+        <label>进度 <span id="dProgLabel">0%</span></label>
+        <input type="range" id="dProg" min="0" max="100" step="5">
+      </div>
+
+      <div class="field hidden" id="dHistWrap" style="margin-bottom:12px">
+        <label>近 28 天打卡</label>
+        <div class="hist" id="dHist"></div>
+      </div>
+
+      <div class="field">
+        <label>详情备注</label>
+        <textarea id="dDetail" placeholder="补充说明、拆分步骤"></textarea>
+      </div>
+
+      <div class="dlg-foot">
+        <button class="btn ghost" id="dPin"><i class="fa-solid fa-thumbtack"></i> 置顶任务</button>
+        <button class="btn ghost" id="dDelete" style="color:var(--c-pink-deep);box-shadow:inset 0 0 0 1px var(--c-pink)"><i class="fa-solid fa-trash-can"></i> 删除</button>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn ghost" id="dCancel">取消</button>
+        <button class="btn" id="dSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用记录编辑弹窗 -->
+  <div class="mask" id="editModal">
+    <div class="dialog" style="max-width:430px">
+      <h3 id="emTitle">编辑记录</h3>
+      <div id="emFields"></div>
+      <div class="dlg-foot">
+        <button class="btn ghost" id="emCancel">取消</button>
+        <button class="btn" id="emSave"><i class="fa-solid fa-check"></i> 保存修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用说明弹窗 -->
+  <div class="mask" id="noticeModal">
+    <div class="dialog" style="max-width:400px">
+      <h3 id="nmTitle">温馨提示</h3>
+      <div id="nmBody" style="line-height:1.85;color:var(--ink-2);font-size:13.5px"></div>
+      <div id="nmSign" class="notice-sign"></div>
+      <div class="dlg-foot">
+        <button class="btn ghost" id="nmCancel">取消</button>
+        <button class="btn" id="nmOk">知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastBox"></div>
+
+<script>
+/*{{DATA}}*/
+</script>
+<script>
+/*{{APP}}*/
+</script>
+<script>
+/*{{MODULES}}*/
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () { /* 离线或缺失时忽略 */ });
+  });
+}
+</script>
+</body>
+</html>
